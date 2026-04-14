@@ -394,18 +394,20 @@ let secsLeft = EXAM_MINS * 60;
 let lockoutActive = false;
 let lockoutInterval = null;
 let lastBlurTime = 0;
+let ignoreBlur = false;
 
 // ── 시작 ──────────────────────────────────────────────
 document.getElementById('btn-start').addEventListener('click', () => {
+  ignoreBlur = true;
   studentId   = document.getElementById('inp-id').value.trim();
   studentName = document.getElementById('inp-name').value.trim();
-  if (!studentId || !studentName) { alert('학번과 이름을 입력해주세요.'); return; }
+  if (!studentId || !studentName) { ignoreBlur = false; alert('학번과 이름을 입력해주세요.'); return; }
   document.getElementById('start-screen').style.display = 'none';
   document.getElementById('exam-screen').style.display = 'block';
   document.getElementById('bar-name').textContent = studentName + ' (' + studentId + ')';
   examStarted = true;
   startTimer();
-  document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(()=>{});
+  document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(()=>{}); setTimeout(()=>{ ignoreBlur = false; }, 800);
 });
 
 // ── 라디오 선택 시 스타일 ───────────────────────────────
@@ -432,7 +434,7 @@ function startTimer() {
 
 // ── 창 이탈 감지 → 1분 잠금 ────────────────────────────
 function triggerLockout() {
-  if (!examStarted || lockoutActive) return;
+  if (!examStarted || lockoutActive || ignoreBlur) return;
   lockoutActive = true;
   warnCount++;
   document.getElementById('warn-badge').textContent = '이탈 ' + warnCount + '회';
@@ -462,9 +464,14 @@ window.addEventListener('blur', () => {
 
 // ── 제출 ────────────────────────────────────────────────
 document.getElementById('btn-submit').addEventListener('click', () => {
+  ignoreBlur = true;
   const unanswered = [1,2,3,4,5,6,7,8,9,10].filter(n => !document.querySelector(`input[name=mc${n}]:checked`)).length;
-  if (unanswered > 0 && !confirm(unanswered + '문항에 답하지 않았습니다. 그래도 제출하시겠습니까?')) return;
-  if (!confirm('제출하면 수정할 수 없습니다. 최종 제출하시겠습니까?')) return;
+  if (unanswered > 0 && !confirm(unanswered + '문항에 답하지 않았습니다. 그래도 제출하시겠습니까?')) {
+    ignoreBlur = false; return;
+  }
+  if (!confirm('제출하면 수정할 수 없습니다. 최종 제출하시겠습니까?')) {
+    ignoreBlur = false; return;
+  }
   submitExam();
 });
 
