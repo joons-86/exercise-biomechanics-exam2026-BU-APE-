@@ -79,7 +79,7 @@ img.q-img{max-width:100%;display:block;margin:10px auto;border:0.5px solid #ddd;
   <div class="field"><label>이름</label><input id="inp-name" placeholder="예: 홍길동" maxlength="10"></div>
   <div class="notice-box">
     ⚠ <b>주의사항</b><br>
-    • 제한시간 70분<br>
+    • 제한시간 40분<br>
     • 시험 중 다른 창·탭으로 이동하면 <b style="color:#c00">1분간 시험이 잠금</b>됩니다<br>
     • 잠금 해제 후 시험 재개 가능 (이탈 횟수 기록됨)<br>
     • 제출 후 수정 불가
@@ -385,7 +385,9 @@ img.q-img{max-width:100%;display:block;margin:10px auto;border:0.5px solid #ddd;
 </div>
 
 <script>
-const EXAM_MINS = 70;
+const EXAM_MINS = 40;
+// ▼ Apps Script 배포 URL을 여기에 붙여넣기
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/여기에URL붙여넣기/exec';
 let studentName = '', studentId = '';
 let warnCount = 0;
 let examStarted = false;
@@ -483,6 +485,13 @@ function submitExam() {
   document.getElementById('exam-screen').style.display = 'none';
   document.getElementById('done-screen').style.display = 'block';
   document.getElementById('done-info').textContent = '학번: ' + studentId + ' | 이름: ' + studentName + ' | 이탈 횟수: ' + warnCount + '회';
+  // Google Sheets 전송
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  }).catch(()=>{});
 }
 
 function collectAnswers() {
