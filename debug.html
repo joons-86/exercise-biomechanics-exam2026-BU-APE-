@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>답안 진단</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Malgun Gothic',sans-serif;background:#f4f4f4;padding:20px}
+.box{background:#fff;border-radius:12px;padding:24px;max-width:600px;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,.1)}
+h1{font-size:17px;font-weight:700;margin-bottom:16px}
+.item{background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:10px;font-size:13px;word-break:break-all}
+.ok{border-left:4px solid #2e7d32}
+.warn{border-left:4px solid #e65100}
+.err{border-left:4px solid #c62828}
+button{background:#2c5aa0;color:#fff;border:none;border-radius:8px;padding:11px 20px;font-size:14px;font-family:inherit;cursor:pointer;margin-top:12px;width:100%}
+button:disabled{background:#aaa}
+.result{margin-top:12px;padding:12px;border-radius:8px;font-size:13px;line-height:1.7}
+.r-ok{background:#e8f5e9;color:#2e7d32}
+.r-err{background:#ffebee;color:#c62828}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>📋 답안 진단 페이지</h1>
+  <div id="diag"></div>
+  <button id="btn" onclick="sendAll()" style="display:none">발견된 답안 모두 전송</button>
+  <div class="result" id="result" style="display:none"></div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbySC1XMOGnOuz6R_xHEkI5CIUvlki__sy5knu5PIYDw9i7I36QECYL0xFgpmB5jZIgK/exec';
+
+const diag = document.getElementById('diag');
+let foundData = [];
+
+// localStorage 전체 탐색
+const total = localStorage.length;
+let examKeys = [];
+for (let i = 0; i < total; i++) {
+  const key = localStorage.key(i);
+  if (key && key.startsWith('exam_result_')) examKeys.push(key);
+}
+
+if (total === 0) {
+  diag.innerHTML = '<div class="item err">localStorage가 비어있습니다. 브라우저를 잘못 선택했거나 시크릿 모드로 접속했을 수 있습니다.</div>';
+} else if (examKeys.length === 0) {
+  // exam_result_ 키는 없지만 다른 키는 있음 - 전체 키 보여주기
+  let html = `<div class="item warn">exam_result_ 키를 찾지 못했습니다. localStorage에 있는 키 목록 (총 ${total}개):</div>`;
+  for (let i = 0; i < Math.min(total, 20); i++) {
+    const key = localStorage.key(i);
+    html += `<div class="item">${key}</div>`;
+  }
+  diag.innerHTML = html;
+} else {
+  let html = `<div class="item ok">✅ 답안 ${examKeys.length}개 발견!</div>`;
+  examKeys.forEach(key => {
+    try {
+      const d = JSON.parse(localStorage.getItem(key));
+      foundData.push(d);
+      html += `<div class="item ok">
+        <b>${d.studentName || '이름없음'}</b> (${d.studentId || '학번없음'})<br>
+        제출시각: ${d.submittedAt || '기록없음'}<br>
+        이탈횟수: ${d.warnCount || 0}회<br>
+        객관식 응답: ${Object.keys(d.mc||{}).length}문항
+      </div>`;
+    } catch(e) {
+      html += `<div class="item warn">${key}: 파싱 오류</div>`;
+    }
+  });
+  diag.innerHTML = html;
+  if (foundData.length > 0) {
+    document.getElementById('btn').style.display = 'block';
+  }
+}
+
+async function sendAll() {
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.textContent = '전송 중...';
+  let ok = 0, fail = 0;
+  for (const data of foundData) {
+    try {
+      data._recovery = true;
+      data._recoveryAt = new Date().toLocaleString('ko-KR');
+      await fetch(SCRIPT_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      });
+      ok++;
+    } catch(e) { fail++; }
+  }
+  const r = document.getElementById('result');
+  r.style.display = 'block';
+  r.className = fail === 0 ? 'result r-ok' : 'result r-err';
+  r.textContent = fail === 0
+    ? `✅ ${ok}개 전송 완료! 이 화면을 캡처해서 교수님께 보내주세요.`
+    : `⚠️ ${ok}개 성공, ${fail}개 실패. 인터넷 확인 후 다시 눌러주세요.`;
+  btn.textContent = '전송 완료';
+}
+</script>
+</body>
+</html>
